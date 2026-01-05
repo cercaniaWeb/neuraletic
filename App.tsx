@@ -330,6 +330,77 @@ const App: React.FC = () => {
     }
   };
 
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('cyberpath_auth_token') === 'CYBER-SECURE-2026';
+  });
+  const [authInput, setAuthInput] = useState('');
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Simple client-side gate. For true security, validate against server env var.
+    const secret = 'Correo123'; // Default password
+    if (authInput === secret) {
+      setIsAuthenticated(true);
+      localStorage.setItem('cyberpath_auth_token', 'CYBER-SECURE-2026');
+      playSuccess();
+    } else {
+      playError();
+      setError('ACCESS DENIED: Invalid Clearance Code');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4 font-mono text-cyan-500 selection:bg-cyan-500/30">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center space-y-4">
+            <div className="inline-block relative">
+              <Shield className="h-16 w-16 mx-auto text-cyan-500 animate-pulse" />
+              <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full" />
+            </div>
+            <h1 className="text-3xl font-black tracking-[0.2em] text-white">RESTRICTED AREA</h1>
+            <p className="text-sm text-cyan-500/70">Secure Operating Environment</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-6 bg-white/5 p-8 rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+            <div className="space-y-2">
+              <label className="text-xs font-bold tracking-wider text-cyan-400 uppercase">Access Code</label>
+              <input
+                type="password"
+                value={authInput}
+                onChange={(e) => {
+                  setAuthInput(e.target.value);
+                  playTyping();
+                }}
+                className="w-full bg-black/50 border border-cyan-500/30 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-all font-mono text-center tracking-[0.5em]"
+                placeholder="••••••"
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-500 text-xs text-center font-bold animate-pulse">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all uppercase tracking-widest hover:shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+            >
+              Authenticate
+            </button>
+          </form>
+
+          <div className="text-center text-[10px] text-cyan-900 uppercase">
+            Authorized Personnel Only • IP Logged
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-cyber-dark text-slate-300 font-sans selection:bg-cyan-500/30 lg:overflow-hidden">
       <Header xp={lesson?.xp || 0} status={feedback?.header.status === 'success' ? 'success' : (error ? 'security_alert' : 'error')}>
