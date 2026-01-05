@@ -85,7 +85,7 @@ app.post('/api/terminal/exec', (req, res) => {
     console.log(`[RealTerminal] Executing: ${finalCommand}`);
 
     // Execution with timeout and constrained buffer
-    exec(finalCommand, { timeout: 15000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+    exec(finalCommand, { timeout: 45000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
         let output = stdout;
         if (stderr) {
             output += `\n\x1b[33m[STDERR]\n${stderr}\x1b[0m`;
