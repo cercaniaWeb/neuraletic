@@ -18,7 +18,7 @@ import { evaluateOffline } from './services/offlineEvaluator';
 import { useCyberSound } from './hooks/useCyberSound';
 
 import { TraineeGraph } from './components/TraineeGraph';
-import { Network } from 'lucide-react';
+import { Terminal as TerminalIcon, Shield, Cpu, Activity, Send, Network, Settings, Volume2, VolumeX, X } from 'lucide-react';
 
 // ... (imports remain)
 
@@ -41,17 +41,21 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLessonComplete, setIsLessonComplete] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const { playSuccess, playError } = useCyberSound();
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('cyberpath_sound');
+    return saved !== 'false';
+  });
+
+  const { playSuccess, playError, playTyping } = useCyberSound(soundEnabled);
 
   // Persistence Effects
   useEffect(() => {
     localStorage.setItem('cyberpath_module_idx', currentModuleIndex.toString());
-  }, [currentModuleIndex]);
-
-  useEffect(() => {
     localStorage.setItem('cyberpath_xp', globalXP.toString());
-  }, [globalXP]);
+    localStorage.setItem('cyberpath_sound', String(soundEnabled));
+  }, [currentModuleIndex, globalXP, soundEnabled]);
 
   const fetchInitialLesson = useCallback(async () => {
     setIsProcessing(true);
@@ -337,6 +341,12 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-cyber-dark text-slate-300 font-sans selection:bg-cyan-500/30 lg:overflow-hidden">
       <Header xp={lesson?.xp || 0} status={feedback?.header.status === 'success' ? 'success' : (error ? 'security_alert' : 'error')}>
         <button
+          onClick={() => setShowSettings(true)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-cyan-500/50 rounded-lg transition-all group"
+        >
+          <Settings className="h-4 w-4 text-slate-400 group-hover:text-cyan-400" />
+        </button>
+        <button
           onClick={() => setShowGraph(true)}
           className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 rounded-lg transition-all group"
         >
@@ -426,6 +436,57 @@ const App: React.FC = () => {
             completedModuleIds={MODULE_PIPELINE.slice(0, currentModuleIndex)}
             onClose={() => setShowGraph(false)}
           />
+        )}
+        {showSettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-[#0a0a0a] border border-cyan-500/30 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.1)] overflow-hidden"
+            >
+              <div className="p-6 border-b border-cyan-500/20 bg-black/40 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white tracking-widest uppercase flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-cyan-500" />
+                  System Config
+                </h2>
+                <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white"><X /></button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="flex items-center gap-3">
+                    {soundEnabled ? <Volume2 className="h-5 w-5 text-cyan-400" /> : <VolumeX className="h-5 w-5 text-slate-500" />}
+                    <div>
+                      <div className="text-white font-bold text-sm">Audio Feedback</div>
+                      <div className="text-slate-500 text-xs">Sound effects and haptics</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${soundEnabled ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${soundEnabled ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2">
+                  <div className="text-red-400 font-bold text-xs uppercase">Danger Zone</div>
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+                        localStorage.clear();
+                        window.location.reload();
+                      }
+                    }}
+                    className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-500 text-xs font-bold rounded uppercase transition-colors"
+                  >
+                    Factory Reset System
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

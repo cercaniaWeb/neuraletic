@@ -62,7 +62,7 @@ export const Terminal: React.FC<TerminalProps> = ({ commandHistory, onCommandSub
     term.write('\n\r\x1b[1;34mroot@cyberpath\x1b[0m:\x1b[1;35m~\x1b[0m# ');
 
     term.onData(data => {
-      playTyping();
+      // playTyping(); // User requested to disable typing sound
       const code = data.charCodeAt(0);
 
       // Handle Enter
