@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { SKILL_TREE_DATA, SkillNode } from '../data/skillTree';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
 interface TraineeGraphProps {
     onClose: () => void;
     currentModuleId: string; // To highlight position
+    completedModuleIds: string[];
 }
 
-export const TraineeGraph: React.FC<TraineeGraphProps> = ({ onClose, currentModuleId }) => {
+export const TraineeGraph: React.FC<TraineeGraphProps> = ({ onClose, currentModuleId, completedModuleIds }) => {
     const graphRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ w: 800, h: 600 });
+    const [selectedNode, setSelectedNode] = useState<SkillNode | null>(null);
 
     useEffect(() => {
         if (containerRef.current) {
@@ -31,16 +33,17 @@ export const TraineeGraph: React.FC<TraineeGraphProps> = ({ onClose, currentModu
 
             // Highlight current active module
             if (node.id === currentModuleId) {
-                color = '#22c55e'; // active/current (green-500)
-                val = 3; // Bigger size
+                color = '#00f2ff'; // active/current (Cyan)
+                val = 3;
+            } else if (completedModuleIds.includes(node.id)) {
+                color = '#22c55e'; // completed (Green)
+                val = 2;
             }
-            // Highlight completed modules (optional logic: if group < current group)
-            // For now, let's stick to highlighting the current one.
 
             return { ...node, color, val };
         });
         return { nodes, links: SKILL_TREE_DATA.links };
-    }, [currentModuleId]);
+    }, [currentModuleId, completedModuleIds]);
 
     return (
         <motion.div
@@ -73,7 +76,7 @@ export const TraineeGraph: React.FC<TraineeGraphProps> = ({ onClose, currentModu
                         width={dimensions.w}
                         height={dimensions.h}
                         graphData={graphData}
-                        nodeLabel="label"
+                        nodeLabel={node => `${node.label} \n [Click para detalles]`}
                         nodeColor={node => (node as any).color}
                         linkColor={() => '#1e293b'}
                         backgroundColor="#00000000"
@@ -83,21 +86,76 @@ export const TraineeGraph: React.FC<TraineeGraphProps> = ({ onClose, currentModu
                         linkDirectionalParticleSpeed={0.005}
                         d3VelocityDecay={0.1}
                         onNodeClick={node => {
-                            // Center graph on node
+                            setSelectedNode(node as unknown as SkillNode);
                             graphRef.current?.centerAt(node.x, node.y, 1000);
-                            graphRef.current?.zoom(8, 2000);
+                            graphRef.current?.zoom(4, 2000);
                         }}
+                        onBackgroundClick={() => setSelectedNode(null)}
                     />
+
+                    {/* Node Details Panel */}
+                    <AnimatePresence>
+                        {selectedNode && (
+                            <motion.div
+                                initial={{ x: 50, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                exit={{ x: 50, opacity: 0 }}
+                                className="absolute top-6 right-6 w-80 bg-black/90 backdrop-blur-md border border-cyan-500/30 p-6 rounded-xl shadow-2xl z-10"
+                            >
+                                <h3 className="text-xl font-bold text-cyan-400 mb-1">{selectedNode.label}</h3>
+
+                                {/* Status Logic */}
+                                {(() => {
+                                    let statusText = 'BLOQUEADO';
+                                    let statusColor = 'bg-slate-600';
+                                    if (selectedNode.id === currentModuleId) {
+                                        statusText = 'EN PROGRESO';
+                                        statusColor = 'bg-cyan-500 animate-pulse';
+                                    } else if (completedModuleIds.includes(selectedNode.id)) {
+                                        statusText = 'DOMINADO';
+                                        statusColor = 'bg-green-500';
+                                    }
+
+                                    return (
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className={`w-2 h-2 rounded-full ${statusColor}`} />
+                                            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                                                {statusText}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs text-cyan-500/70 font-bold uppercase">Descripción del Nodo</label>
+                                        <p className="text-sm text-slate-300 leading-relaxed mt-1">
+                                            {selectedNode.description}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs text-cyan-500/70 font-bold uppercase">Nivel de Acceso</label>
+                                        <div className="mt-1 flex gap-1">
+                                            {[1, 2, 3].map(lvl => (
+                                                <div key={lvl} className={`h-1 flex-1 rounded-full ${lvl <= selectedNode.group ? 'bg-cyan-500' : 'bg-slate-800'}`} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Legend Overlay */}
                     <div className="absolute bottom-6 left-6 p-4 bg-black/60 backdrop-blur border border-white/10 rounded-xl space-y-2 pointer-events-none">
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                            <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                             <span className="text-xs text-slate-300 font-mono">DOMINADO</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
-                            <span className="text-xs text-slate-300 font-mono">ACTIVO</span>
+                            <span className="text-xs text-slate-300 font-mono">EN PROGRESO</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-slate-700" />

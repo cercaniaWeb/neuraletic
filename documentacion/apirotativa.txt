@@ -1,0 +1,123 @@
+Notes
+
+Esta es la guía técnica detallada paso a paso del video de **midudev**, incluyendo todos los comandos y la estructura de archivos necesaria para crear tu propia API de IA gratuita y unificada.
+
+### 1. Instalación y Configuración Inicial
+
+El proyecto utiliza **Bun** por su velocidad y facilidad para manejar servidores y TypeScript.
+
+- **Instalar Bun:**Bash
+    
+    `# En Linux o macOS
+    curl -fsSL https://bun.sh/install | bash
+    # En Windows (PowerShell)
+    powershell -c "irm bun.sh/install.ps1 | iex"`
+    
+- **Inicializar el proyecto:**Bash
+    
+    `mkdir bun-ai-api && cd bun-ai-api
+    bun init  # Selecciona las opciones por defecto [00:01:33]`
+    
+
+### 2. Estructura de Archivos
+
+El video organiza el código de la siguiente manera:
+
+- `index.ts`: Servidor principal y lógica de balanceo.
+- `types.ts`: Definición de interfaces de TypeScript.
+- `services/`: Carpeta con los adaptadores para cada IA (`groq.ts`, `cerebras.ts`).
+- `.env`: Variables de entorno (API Keys).
+- `nixpacks.toml`: Configuración para el despliegue en producción.
+
+### 3. Creación del Servidor (index.ts)
+
+Configura el servidor básico con soporte para variables de entorno y puerto dinámico [[02:04](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=124)].
+
+TypeScript
+
+`// index.ts básico inicial
+const server = Bun.serve({
+  port: process.env.PORT || 3000,
+  async fetch(req) {
+    return new Response("API de Bun funcionando");
+  },
+});
+
+console.log(`Servidor en ${server.url}`);`
+
+**Configurar scripts en `package.json` [[03:14](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=194)]:**
+
+JSON
+
+`"scripts": {
+  "start": "bun index.ts",
+  "dev": "bun --watch index.ts"
+}`
+
+### 4. Implementación de Servicios de IA
+
+Para usar Groq y Cerebras, instala sus SDKs:
+
+Bash
+
+`bun add groq-sdk @cerebras/cerebras_cloud_sdk`
+
+Variables de entorno (.env) [11:51]:
+
+Debes obtener tus llaves en los dashboards de Groq y Cerebras.
+
+Plaintext
+
+`GROQ_API_KEY=tu_llave_aqui
+CEREBRAS_API_KEY=tu_llave_aqui`
+
+### 5. Lógica de Balanceo (Round Robin)
+
+En `index.ts`, se implementa la rotación de servicios para no agotar las cuotas gratuitas de un solo proveedor [[16:50](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=1010)].
+
+TypeScript
+
+`const services = [groqService, cerebrasService];
+let currentServiceIndex = 0;
+
+function getNextService() {
+  const service = services[currentServiceIndex];
+  currentServiceIndex = (currentServiceIndex + 1) % services.length;
+  return service;
+}`
+
+### 6. Despliegue en Producción (Coolify)
+
+El video muestra cómo desplegar en un VPS propio usando **Coolify** [[04:19](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=259)].
+
+1. **Instalar Coolify** en tu servidor (usualmente mediante el panel de control del VPS).
+2. **Archivo `nixpacks.toml` [[06:05](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=365)]:** Vital para que el servidor sepa cómo ejecutar Bun.Ini, TOML
+    
+    `[setup]
+    nixPkgs = ["bun"]
+    
+    [install]
+    cmds = ["bun install"]
+    
+    [start]
+    cmd = "bun run start"`
+    
+3. **Configurar Variables:** En el panel de Coolify, ve a *Environment Variables* y añade las llaves de API de Groq y Cerebras [[25:08](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=1508)].
+
+### 7. Comandos de Prueba
+
+Para verificar que la API funciona (especialmente el streaming y la rotación), usa `curl` desde tu terminal [[19:37](http://www.youtube.com/watch?v=ax7_QNZZ-pk&t=1177)]:
+
+Bash
+
+`curl -X POST http://localhost:3000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "Explica Fibonacci en JS"}
+    ]
+  }'`
+
+**Video completo:** [Deja de pagar la API de OpenAI](http://www.youtube.com/watch?v=ax7_QNZZ-pk)
+
+Estoy usando la IA de Notion para transcribir esta reunión y generar notas a partir de ella.

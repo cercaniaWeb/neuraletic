@@ -51,9 +51,10 @@ export interface LessonState {
   title: string;
   objective: string;
   xp: number;
+  video_url?: string;
 }
 
 export interface CommandHistoryItem {
-    command: string;
-    output: string;
+  command: string;
+  output: string;
 }

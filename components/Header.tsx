@@ -54,13 +54,13 @@ export const Header: React.FC<HeaderProps> = ({ xp, status = 'success', children
         <div className={`flex items-center gap-3 ${currentStatus.color}`}>
           <Activity className="h-4 w-4" />
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-500 font-mono uppercase leading-none">Kernel Status</span>
-            <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] text-slate-500 font-mono uppercase leading-none hidden md:block">Kernel Status</span>
+            <div className="flex items-center gap-2 mt-0 md:mt-0.5">
               <span className="relative flex h-2 w-2">
                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${currentStatus.pingColor} opacity-75`}></span>
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus.finalColor}`}></span>
               </span>
-              <span className="text-[11px] font-bold font-mono tracking-wider leading-none">{currentStatus.text}</span>
+              <span className="text-[11px] font-bold font-mono tracking-wider leading-none hidden sm:block">{currentStatus.text}</span>
             </div>
           </div>
         </div>

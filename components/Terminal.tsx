@@ -4,6 +4,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { CommandHistoryItem } from '../types';
+import { useCyberSound } from '../hooks/useCyberSound';
 
 interface TerminalProps {
   commandHistory: CommandHistoryItem[];
@@ -31,6 +32,7 @@ export const Terminal: React.FC<TerminalProps> = ({ commandHistory, onCommandSub
   const xtermRef = useRef<XTerm | null>(null);
   const commandBufferRef = useRef('');
   const onCommandSubmitRef = useRef(onCommandSubmit);
+  const { playTyping } = useCyberSound();
 
   useEffect(() => {
     onCommandSubmitRef.current = onCommandSubmit;
@@ -60,11 +62,11 @@ export const Terminal: React.FC<TerminalProps> = ({ commandHistory, onCommandSub
     term.write('\n\r\x1b[1;34mroot@cyberpath\x1b[0m:\x1b[1;35m~\x1b[0m# ');
 
     term.onData(data => {
-      // Don't capture input if we're waiting for AI
-      // if (isLoading) return; // Removed this for smoother feel, we'll handle it in enter
-
+      playTyping();
       const code = data.charCodeAt(0);
-      if (code === 13) { // Enter
+
+      // Handle Enter
+      if (code === 13) {
         term.write('\r\n');
         const cmd = commandBufferRef.current;
         if (cmd.trim()) {
@@ -73,14 +75,26 @@ export const Terminal: React.FC<TerminalProps> = ({ commandHistory, onCommandSub
         } else {
           term.write('\x1b[1;34mroot@cyberpath\x1b[0m:\x1b[1;35m~\x1b[0m# ');
         }
-      } else if (code === 127 || code === 8) { // Backspace
+      }
+      // Handle Backspace
+      else if (code === 127 || code === 8) {
         if (commandBufferRef.current.length > 0) {
           term.write('\b \b');
           commandBufferRef.current = commandBufferRef.current.slice(0, -1);
         }
-      } else if (data.length === 1 && code >= 32 && code <= 126) {
-        term.write(data);
-        commandBufferRef.current += data;
+      }
+      // Handle Normal Input & Paste (length >= 1)
+      else if (code >= 32 || data.length > 1) {
+        // Prevent control characters if it's a single char, but allow pastes
+        // For pastes, we might get chunks. We'll simply append them.
+        // We should probably strip newlines from pasted text to avoid accidental submits or weird formatting, 
+        // or handle them. For now, let's just strip \r and \n to keep it on one line.
+        const cleanData = data.replace(/[\r\n]+/g, '');
+
+        if (cleanData.length > 0) {
+          term.write(cleanData);
+          commandBufferRef.current += cleanData;
+        }
       }
     });
 

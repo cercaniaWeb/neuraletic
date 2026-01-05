@@ -15,6 +15,7 @@ import { ACADEMIC_CURRICULUM } from './data/curriculum';
 
 // ... (imports remain)
 import { evaluateOffline } from './services/offlineEvaluator';
+import { useCyberSound } from './hooks/useCyberSound';
 
 import { TraineeGraph } from './components/TraineeGraph';
 import { Network } from 'lucide-react';
@@ -22,20 +23,41 @@ import { Network } from 'lucide-react';
 // ... (imports remain)
 
 const App: React.FC = () => {
+  // State Initialization with Persistence
+  const [currentModuleIndex, setCurrentModuleIndex] = useState(() => {
+    const saved = localStorage.getItem('cyberpath_module_idx');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [globalXP, setGlobalXP] = useState(() => {
+    const saved = localStorage.getItem('cyberpath_xp');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
   const [lesson, setLesson] = useState<LessonState | null>(null);
   const [feedback, setFeedback] = useState<CyberPathResponse | null>(null);
   const [commandHistory, setCommandHistory] = useState<CommandHistoryItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [isLessonComplete, setIsLessonComplete] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
+
+  const { playSuccess, playError } = useCyberSound();
+
+  // Persistence Effects
+  useEffect(() => {
+    localStorage.setItem('cyberpath_module_idx', currentModuleIndex.toString());
+  }, [currentModuleIndex]);
+
+  useEffect(() => {
+    localStorage.setItem('cyberpath_xp', globalXP.toString());
+  }, [globalXP]);
 
   const fetchInitialLesson = useCallback(async () => {
     setIsProcessing(true);
     setError(null);
     try {
-      const initialModuleKey = MODULE_PIPELINE[0]; // 'Fundamentos'
+      const initialModuleKey = MODULE_PIPELINE[currentModuleIndex] || MODULE_PIPELINE[0];
       const staticContent = ACADEMIC_CURRICULUM[initialModuleKey];
 
       if (!staticContent) throw new Error(`Curriculum data missing for module: ${initialModuleKey}`);
@@ -47,8 +69,6 @@ const App: React.FC = () => {
       });
 
       if (response?.header.status === 'success') {
-        setCurrentModuleIndex(0);
-
         // Use STATIC CONTENT for the theory to ensure quality
         const theoryText = staticContent.theory_block;
         const aiObjective = response.payload?.next_content?.lab_setup || "";
@@ -57,12 +77,13 @@ const App: React.FC = () => {
         setLesson({
           title: staticContent.title,
           objective: theoryText,
-          xp: 0,
+          xp: globalXP,
+          video_url: staticContent.video_url
         });
 
         setCommandHistory([{
           command: 'system_init',
-          output: `Módulo cargado: ${staticContent.title}.\nObjetivo Primario: ${staticContent.lab_config.target_ip}`
+          output: `Módulo cargado: ${staticContent.title}.\nObjetivo Primario: ${staticContent.lab_config.target_ip}\nProgreso recuperado.`
         }]);
 
         setFeedback({
@@ -81,20 +102,20 @@ const App: React.FC = () => {
     } catch (err) {
       console.warn("AI Engine unreachable, switching to OFFLINE MODE.");
 
-      const initialModuleKey = MODULE_PIPELINE[0];
+      const initialModuleKey = MODULE_PIPELINE[currentModuleIndex] || MODULE_PIPELINE[0];
       const staticContent = ACADEMIC_CURRICULUM[initialModuleKey];
 
       if (staticContent) {
         // Fallback: Load static content if AI fails
-        setCurrentModuleIndex(0);
         setLesson({
           title: staticContent.title,
           objective: staticContent.theory_block,
-          xp: 0,
+          xp: globalXP,
+          video_url: staticContent.video_url
         });
         setCommandHistory([{
           command: 'system_init',
-          output: `\x1b[1;33m⚠️ CONEXIÓN NEURONAL INESTABLE. MODO OFFLINE ACTIVADO.\x1b[0m\n\nMódulo cargado: ${staticContent.title}.\nObjetivo: ${staticContent.lab_config.target_ip}`
+          output: `\x1b[1;33m⚠️ CONEXIÓN NEURONAL INESTABLE. MODO OFFLINE ACTIVADO.\x1b[0m\n\nMódulo cargado: ${staticContent.title}.\nObjetivo: ${staticContent.lab_config.target_ip}\n[Progreso Guardado]`
         }]);
 
         setFeedback({
@@ -114,7 +135,7 @@ const App: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [currentModuleIndex]); // Depend on currentModuleIndex to fetch correct module on mount/retry
 
   useEffect(() => {
     fetchInitialLesson();
@@ -142,11 +163,14 @@ const App: React.FC = () => {
       });
 
       if (response?.payload?.next_content && response.header.status === 'success') {
-        setCurrentModuleIndex(nextModuleIndex);
+        setCurrentModuleIndex(nextModuleIndex); // Helper Effect will save to localStorage
         setLesson(prev => ({
           title: `Módulo ${nextModuleIndex + 1}: ${nextModuleKey}`,
           objective: response.payload!.next_content!.theory,
-          xp: prev?.xp || 0,
+          xp: globalXP,
+          // Note: In dynamic generation, we might lose the static video URL unless we fetch it from static content again.
+          // Let's grab it from static content for consistency
+          video_url: ACADEMIC_CURRICULUM[nextModuleKey]?.video_url
         }));
         setFeedback(response);
         setCommandHistory(prev => [...prev, { command: `load_module ${nextModuleKey}`, output: 'Nuevo escenario cargado correctamente.' }]);
@@ -161,7 +185,8 @@ const App: React.FC = () => {
         setLesson(prev => ({
           title: staticContent.title,
           objective: staticContent.theory_block,
-          xp: prev?.xp || 0,
+          xp: globalXP,
+          video_url: staticContent.video_url
         }));
 
         setFeedback({
@@ -189,10 +214,49 @@ const App: React.FC = () => {
 
   const handleCommandSubmit = async (command: string) => {
     if (!lesson) return;
+
+    // -------------------------------------------------------------------------
+    // 1. FILESYSTEM SIMULATION (Exploration Mode)
+    // -------------------------------------------------------------------------
+    const cmd = command.trim();
+    if (['ls', 'll', 'ls -la', 'whoami', 'pwd', 'id'].includes(cmd) || cmd.startsWith('cat ')) {
+      const timestamp = new Date().toLocaleTimeString();
+      setCommandHistory(prev => [...prev, { command, output: '' }]); // Placeholder
+
+      // Simulate local shell processing time
+      setTimeout(() => {
+        let output = '';
+        if (cmd === 'ls' || cmd === 'll' || cmd === 'ls -la') {
+          output = "drwxr-xr-x  2 root root 4096 Jan 05 04:20 .\ndrwxr-xr-x  4 root root 4096 Jan 05 04:00 ..\n-rw-r--r--  1 root root   45 Jan 05 04:20 targets.txt\n-rwxr-x---  1 root root  128 Jan 05 04:20 exploit_draft.py\n-rw-r--r--  1 root root 1024 Jan 05 04:20 README.md";
+        } else if (cmd === 'whoami') {
+          output = 'root';
+        } else if (cmd === 'id') {
+          output = 'uid=0(root) gid=0(root) groups=0(root)';
+        } else if (cmd === 'pwd') {
+          output = '/home/operative/mission_control';
+        } else if (cmd.startsWith('cat ')) {
+          const filename = cmd.split(' ')[1];
+          if (filename === 'targets.txt') output = "PRIMARY TARGET: 10.10.10.5\nSECONDARY: 10.10.10.15 (SQLi Vulnerable)";
+          else if (filename === 'exploit_draft.py') output = "# TODO: Implement buffer overflow logic\nimport socket\n\ntarget = '10.10.10.5'\nport = 80";
+          else if (filename === 'README.md') output = "# MISSION PROTOCOLS\n1. Do not scan out of scope.\n2. Report all found flags.\n3. Use stealth mode when possible.";
+          else output = `cat: ${filename}: No such file or directory`;
+        }
+
+        setCommandHistory(prev => {
+          const newHist = [...prev];
+          newHist[newHist.length - 1].output = output;
+          return newHist;
+        });
+        playTyping(); // Generic feedback sound
+      }, 50);
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
     setCommandHistory(prev => [...prev, { command, output: 'Executing...' }]);
+
 
     try {
       const response = await sendToCyberPathEngine({
@@ -201,6 +265,10 @@ const App: React.FC = () => {
         user_command: command,
         terminal_output: `Simulated execution of ${command}`
       });
+
+      if (response.header.status === 'error') {
+        throw new Error(response.payload?.evaluation?.feedback || "API Error");
+      }
 
       setFeedback(response);
 
@@ -211,10 +279,15 @@ const App: React.FC = () => {
       });
 
       if (response.payload?.evaluation?.is_correct) {
-        setLesson(prev => prev ? ({ ...prev, xp: prev.xp + (response.payload?.evaluation?.score || 100) }) : null);
+        playSuccess();
+        const xpGained = response.payload?.evaluation?.score || 100;
+        setGlobalXP(prev => prev + xpGained);
+        setLesson(prev => prev ? ({ ...prev, xp: prev.xp + xpGained }) : null);
         if (!response.payload?.next_content?.theory) {
           setIsLessonComplete(true);
         }
+      } else {
+        playError();
       }
 
       if (response.payload?.next_content?.theory) {
@@ -240,11 +313,16 @@ const App: React.FC = () => {
       });
 
       if (offlineResponse.payload?.evaluation?.is_correct) {
-        setLesson(prev => prev ? ({ ...prev, xp: prev.xp + 50 }) : null); // Fewer XP for offline? Or same.
+        playSuccess();
+        const xpGained = 50;
+        setGlobalXP(prev => prev + xpGained);
+        setLesson(prev => prev ? ({ ...prev, xp: prev.xp + xpGained }) : null);
         // In offline mode, we might not fetch "new" content dynamically, but we mark as complete
         // If we want to simulate progression within a module, we'd need sub-steps.
         // For now, let's assume one correct command = module mastery or step forward.
         setIsLessonComplete(true);
+      } else {
+        playError();
       }
 
       // Don't show critical error, show offline status
@@ -256,7 +334,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cyber-dark text-slate-300 font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-cyber-dark text-slate-300 font-sans selection:bg-cyan-500/30 lg:overflow-hidden">
       <Header xp={lesson?.xp || 0} status={feedback?.header.status === 'success' ? 'success' : (error ? 'security_alert' : 'error')}>
         <button
           onClick={() => setShowGraph(true)}
@@ -267,9 +345,9 @@ const App: React.FC = () => {
         </button>
       </Header>
 
-      <main className="h-[calc(100vh-80px)] p-4 md:p-6 flex flex-col lg:flex-row gap-6 overflow-hidden">
+      <main className="lg:h-[calc(100vh-80px)] h-auto p-4 md:p-6 flex flex-col lg:flex-row gap-6 overflow-y-auto lg:overflow-visible">
         {/* Left Column: UI Panels */}
-        <div className="w-full lg:w-[400px] flex flex-col gap-6 h-full overflow-hidden">
+        <div className="w-full lg:w-[400px] flex flex-col gap-6 lg:h-full lg:overflow-y-auto pr-0 lg:pr-2 shrink-0">
           <AnimatePresence mode="wait">
             {error && !lesson ? (
               <motion.div
@@ -307,7 +385,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Right Column: Interactive Terminal */}
-        <div className="flex-1 h-full relative group">
+        <div className="w-full h-[500px] lg:h-full lg:flex-1 relative group shrink-0">
           <Terminal
             commandHistory={commandHistory}
             onCommandSubmit={handleCommandSubmit}
@@ -345,6 +423,7 @@ const App: React.FC = () => {
         {showGraph && (
           <TraineeGraph
             currentModuleId={MODULE_PIPELINE[currentModuleIndex]}
+            completedModuleIds={MODULE_PIPELINE.slice(0, currentModuleIndex)}
             onClose={() => setShowGraph(false)}
           />
         )}
