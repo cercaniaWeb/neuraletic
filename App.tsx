@@ -219,55 +219,51 @@ const App: React.FC = () => {
   const handleCommandSubmit = async (command: string) => {
     if (!lesson) return;
 
-    // -------------------------------------------------------------------------
-    // 1. FILESYSTEM SIMULATION (Exploration Mode)
-    // -------------------------------------------------------------------------
-    const cmd = command.trim();
-    if (['ls', 'll', 'ls -la', 'whoami', 'pwd', 'id'].includes(cmd) || cmd.startsWith('cat ')) {
-      const timestamp = new Date().toLocaleTimeString();
-      setCommandHistory(prev => [...prev, { command, output: '' }]); // Placeholder
-
-      // Simulate local shell processing time
-      setTimeout(() => {
-        let output = '';
-        if (cmd === 'ls' || cmd === 'll' || cmd === 'ls -la') {
-          output = "drwxr-xr-x  2 root root 4096 Jan 05 04:20 .\ndrwxr-xr-x  4 root root 4096 Jan 05 04:00 ..\n-rw-r--r--  1 root root   45 Jan 05 04:20 targets.txt\n-rwxr-x---  1 root root  128 Jan 05 04:20 exploit_draft.py\n-rw-r--r--  1 root root 1024 Jan 05 04:20 README.md";
-        } else if (cmd === 'whoami') {
-          output = 'root';
-        } else if (cmd === 'id') {
-          output = 'uid=0(root) gid=0(root) groups=0(root)';
-        } else if (cmd === 'pwd') {
-          output = '/home/operative/mission_control';
-        } else if (cmd.startsWith('cat ')) {
-          const filename = cmd.split(' ')[1];
-          if (filename === 'targets.txt') output = "PRIMARY TARGET: 10.10.10.5\nSECONDARY: 10.10.10.15 (SQLi Vulnerable)";
-          else if (filename === 'exploit_draft.py') output = "# TODO: Implement buffer overflow logic\nimport socket\n\ntarget = '10.10.10.5'\nport = 80";
-          else if (filename === 'README.md') output = "# MISSION PROTOCOLS\n1. Do not scan out of scope.\n2. Report all found flags.\n3. Use stealth mode when possible.";
-          else output = `cat: ${filename}: No such file or directory`;
-        }
-
-        setCommandHistory(prev => {
-          const newHist = [...prev];
-          newHist[newHist.length - 1].output = output;
-          return newHist;
-        });
-        playTyping(); // Generic feedback sound
-      }, 50);
-      return;
-    }
-
     setIsProcessing(true);
     setError(null);
 
-    setCommandHistory(prev => [...prev, { command, output: 'Executing...' }]);
+    // Initial Feedback: "Executing..."
+    setCommandHistory(prev => [...prev, { command, output: '⚡ Initializing uplink...' }]);
 
+    let realOutput = "";
+    let executionSuccess = false;
 
+    // 1. EXECUTE ON REAL SERVER (The "Cables" connected)
+    try {
+      const execResponse = await fetch('/api/terminal/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+      });
+
+      if (execResponse.ok) {
+        const data = await execResponse.json();
+        realOutput = data.output;
+        executionSuccess = true;
+      } else {
+        realOutput = "⚠️ Terminal Uplink Failed: Service Error";
+      }
+    } catch (e) {
+      console.warn("Real execution failed:", e);
+      realOutput = "⚠️ Terminal Uplink Failed: Network Unreachable (Are you offline?)";
+    }
+
+    // Update Terminal with REAL OUTPUT immediately
+    setCommandHistory(prev => {
+      const newHist = [...prev];
+      newHist[newHist.length - 1].output = realOutput;
+      return newHist;
+    });
+
+    if (executionSuccess) playTyping();
+
+    // 2. AI ANALYSIS (The "Brain")
     try {
       const response = await sendToCyberPathEngine({
         action: "evaluate",
         lesson_objective: lesson.objective,
         user_command: command,
-        terminal_output: `Simulated execution of ${command}`
+        terminal_output: realOutput // Pass the REAL output to the AI
       });
 
       if (response.header.status === 'error') {
@@ -276,11 +272,8 @@ const App: React.FC = () => {
 
       setFeedback(response);
 
-      setCommandHistory(prev => {
-        const newHistory = [...prev];
-        newHistory[newHistory.length - 1].output = response.payload?.evaluation?.feedback || 'Analysis complete.';
-        return newHistory;
-      });
+      // Note: We do NOT overwrite the terminal output here. 
+      // The user sees the real result. The analysis is in the Feedback Panel.
 
       if (response.payload?.evaluation?.is_correct) {
         playSuccess();
@@ -310,20 +303,20 @@ const App: React.FC = () => {
 
       setFeedback(offlineResponse);
 
-      setCommandHistory(prev => {
-        const newHistory = [...prev];
-        newHistory[newHistory.length - 1].output = offlineResponse.payload?.evaluation?.feedback || 'Offline Analysis complete.';
-        return newHistory;
-      });
+      // Only provide text feedback in terminal if real execution failed entirely
+      if (!executionSuccess) {
+        setCommandHistory(prev => {
+          const newHistory = [...prev];
+          newHistory[newHistory.length - 1].output = offlineResponse.payload?.evaluation?.feedback || 'Offline Analysis complete.';
+          return newHistory;
+        });
+      }
 
       if (offlineResponse.payload?.evaluation?.is_correct) {
         playSuccess();
         const xpGained = 50;
         setGlobalXP(prev => prev + xpGained);
         setLesson(prev => prev ? ({ ...prev, xp: prev.xp + xpGained }) : null);
-        // In offline mode, we might not fetch "new" content dynamically, but we mark as complete
-        // If we want to simulate progression within a module, we'd need sub-steps.
-        // For now, let's assume one correct command = module mastery or step forward.
         setIsLessonComplete(true);
       } else {
         playError();
