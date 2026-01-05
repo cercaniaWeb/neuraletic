@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
 import { groqService, cerebrasService, AiService } from './services/aiProviders';
 
 dotenv.config();
@@ -56,8 +57,41 @@ app.post('/api/generate', async (req, res) => {
     }
 });
 
+// Real System Execution Endpoint
+app.post('/api/terminal/exec', (req, res) => {
+    const { command } = req.body;
+
+    if (!command || typeof command !== 'string') {
+        res.status(400).json({ error: 'Valid command required' });
+        return;
+    }
+
+    // Safety Blocklist for "Real Mode"
+    const blocked = ['rm ', 'mv ', 'shutdown', 'reboot', ':(){:|:&};:', 'dd '];
+    if (blocked.some(b => command.includes(b))) {
+        res.json({ output: '\x1b[1;31m🚫 SYSTEM ALERT: Comando bloqueado por protocolos de seguridad del laboratorio.\x1b[0m' });
+        return;
+    }
+
+    console.log(`[RealTerminal] Executing: ${command}`);
+
+    // Execution with timeout and constrained buffer
+    exec(command, { timeout: 15000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+        let output = stdout;
+        if (stderr) {
+            output += `\n\x1b[33m[STDERR]\n${stderr}\x1b[0m`;
+        }
+        if (error) {
+            // If the command failed (exit code != 0), we still return the output (like nmap failing to find host)
+            // but we might want to append the error message if stdout is empty
+            if (!output) output = `Error executing command: ${error.message}`;
+        }
+        res.json({ output: output || '' });
+    });
+});
+
 // Client-side routing: serve index.html for any non-API route
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
     if (req.path.startsWith('/api')) {
         res.status(404).json({ error: 'Endpoint not found' });
         return;
