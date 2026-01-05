@@ -1,0 +1,103 @@
+Informe Estratégico: Arquitectura y Hoja de Ruta de CyberPath
+1. Visión General
+
+CyberPath no es un curso de videos; es un Sistema de Entrenamiento de Ciberdefensa Activa. Utiliza Inteligencia Artificial Generativa para transformar una terminal de comandos en un tutor personalizado que analiza el comportamiento del estudiante en tiempo real.
+2. Pilares de la Aplicación (Checklist de Funcionalidades)
+A. El Motor de Inteligencia (Back-end AI)
+
+El "cerebro" reside en Google AI Studio (Gemini 1.5 Pro).
+
+    [ ] Evaluador de Comandos: Capacidad de distinguir entre un comando correcto, uno con error de sintaxis y uno con error de concepto técnico.
+
+    [ ] Modo RAG (Generación Aumentada): Conexión con bases de datos de vulnerabilidades (CVE) para crear retos actualizados semanalmente.
+
+    [ ] Análisis de Intención: Sistema de seguridad que detecta si el usuario intenta realizar acciones maliciosas fuera del sandbox.
+
+    [ ] Generador de Pistas Progresivas: Entrega de ayuda en tres niveles (Sutil, Técnica, Reveladora).
+
+B. El Sandbox de Práctica (Terminal Interactiva)
+
+    [ ] Emulación de Shell: Basado en xterm.js con soporte para colores ANSI y manejo de estados.
+
+    [ ] Simulador de Output: El sistema debe simular respuestas reales de herramientas como Nmap, Whois, Dig, Netcat, etc.
+
+    [ ] Aislamiento Total: El entorno de ejecución debe ser un contenedor efímero que se destruye al cerrar la sesión.
+
+C. Sistema de Gamificación y Progresión
+
+    [ ] Trainee Graph (Mapa de Aprendizaje): Visualización tipo "Árbol de Habilidades" que muestra el camino recorrido y los "puntos ciegos".
+
+    [ ] Sistema de XP y Niveles: Cálculo de puntos basado en la dificultad del comando y el número de pistas utilizadas.
+
+    [ ] Dashboard de Logros: Insignias por hitos (ej: "First Blood" al completar el primer exploit, "Recon Master" por escaneos perfectos).
+
+3. Arquitectura Técnica Detallada
+Frontend (La Interfaz del Hacker)
+
+    Stack: React.js + TypeScript + Tailwind CSS.
+
+    Gestión de Estado: Zustand o Redux para manejar el progreso global y la persistencia de la sesión.
+
+    Componentes Clave:
+
+        Sidebar: Navegación por módulos (Fundamentos -> Recon -> Explotación).
+
+        TerminalView: El núcleo operativo.
+
+        IntelPanel: Área donde la IA despliega la teoría y el feedback.
+
+Middleware (El Orquestador)
+
+    Stack: Node.js + Express.
+
+    Funciones:
+
+        Recibir el input del terminal.
+
+        Consultar a la API de Gemini con el Prompt Omnibus.
+
+        Formatear la respuesta JSON para el frontend.
+
+        Guardar el historial en una base de datos (PostgreSQL/Supabase).
+
+4. Metodología de Realización (Fases de Desarrollo)
+Fase 1: Configuración del "Cerebro" (Días 1-3)
+
+    Tarea: Refinar el System Instruction en Google AI Studio.
+
+    Check: El modelo debe responder siempre en el JSON estricto definido, sin fallos de parseo.
+
+Fase 2: Construcción del Sandbox UI (Días 4-7)
+
+    Tarea: Implementar xterm.js y conectarlo con el estado de React.
+
+    Check: El usuario puede escribir comandos y verlos reflejados en un historial visualmente atractivo.
+
+Fase 3: Integración del Motor de Evaluación (Días 8-12)
+
+    Tarea: Conectar el frontend con el geminiService.ts.
+
+    Check: Al presionar "Enter" en un comando, la IA devuelve un feedback real y actualiza la barra de XP.
+
+Fase 4: Diseño del Trainee Graph (Días 13-15)
+
+    Tarea: Implementar una librería de visualización (como react-force-graph o D3.js) para mostrar los nodos de aprendizaje.
+
+    Check: El mapa muestra visualmente si el usuario cometió un error (nodo rojo) o un acierto (nodo verde).
+
+5. Checklist de Verificación Final (Criterios de Éxito)
+Requerimiento	Descripción	Estado
+Respuesta IA < 3s	La latencia de Gemini debe ser aceptable para no romper el flujo.	[ ]
+Persistencia	Al recargar la página, el XP y el progreso no se pierden.	[ ]
+Seguridad Ética	La IA bloquea peticiones de "Cómo hackear Facebook/Instagram".	[ ]
+Fidelidad Técnica	Los comandos y explicaciones son técnicamente precisos.	[ ]
+Adaptabilidad	La interfaz funciona correctamente en tablets (educación móvil).	[ ]
+6. Próximos Pasos Inmediatos
+
+Para que este informe pase de papel a realidad, debemos centrarnos en la Fase 1 y 2:
+
+    Obtener la API Key de Google AI Studio.
+
+    Montar el Repositorio con la estructura de archivos que definimos anteriormente.
+
+    Probar el primer reto: "Escaneo de Red con Nmap" para validar que el flujo Terminal -> IA -> Feedback funciona.

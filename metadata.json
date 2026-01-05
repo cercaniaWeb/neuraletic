@@ -1,0 +1,5 @@
+{
+  "name": "CyberPath: Interactive Cybersecurity Labs",
+  "description": "An interactive learning platform for offensive cybersecurity. Users engage with a simulated terminal, where an AI-powered engine evaluates their commands, provides expert feedback, and generates dynamic new challenges.",
+  "requestFramePermissions": []
+}

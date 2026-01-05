@@ -1,0 +1,84 @@
+Informe Técnico: Proyecto "CyberPath"
+Plataforma Educativa de Hacking Ético de Próxima Generación
+1. Resumen Ejecutivo
+
+CyberPath es una plataforma web de aprendizaje activo que elimina la necesidad de instalaciones locales (como Kali Linux). Proporciona un entorno de sandbox en el navegador donde una Inteligencia Artificial (IA) actúa como tutor, evaluador y generador de contenido dinámico basado en amenazas reales del mundo real.
+2. Stack Tecnológico Sugerido
+
+Para garantizar escalabilidad y rendimiento, se propone el siguiente stack:
+
+    Frontend: React.js con TypeScript y Tailwind CSS.
+
+    Terminal: Xterm.js (para la emulación de consola).
+
+    Backend: Node.js (Express) o Python (FastAPI).
+
+    Orquestación de Labs: Docker (contenedores aislados para cada usuario).
+
+    Motor de IA: Google Gemini 1.5 Pro (vía API).
+
+    Base de Datos: PostgreSQL (progreso de usuario) + Pinecone/ChromaDB (Base de datos vectorial para RAG).
+
+3. Arquitectura del Sistema
+
+El sistema debe operar bajo un flujo de "Bucle de Retroalimentación Inteligente":
+
+    Frontend: El usuario lee la teoría y ejecuta comandos en la terminal.
+
+    Middleware: Captura el comando y el output, enviándolos al Motor de IA.
+
+    IA Engine: Evalúa si la acción cumple el objetivo pedagógico y devuelve feedback en JSON.
+
+    Sandbox: Un contenedor Docker ejecuta el comando real en una instancia aislada de Linux.
+
+4. Requerimientos Funcionales (Checklist para el Desarrollador)
+4.1. El Terminal Interactivo (Sandbox)
+
+    Debe persistir la sesión durante la lección.
+
+    Debe simular o ejecutar herramientas estándar: nmap, metasploit, gobuster, cat, ls, etc.
+
+    Seguridad: El contenedor no debe tener acceso a la red externa ni al sistema de archivos del servidor host.
+
+4.2. Motor de Contenido Dinámico (RAG)
+
+    El desarrollador debe implementar un pipeline de Generación Aumentada por Recuperación (RAG).
+
+    La IA debe buscar en fuentes de seguridad (CVE Mitre, blogs de seguridad) para que las lecciones no sean estáticas.
+
+    Cada lección debe seguir este orden: Teoría -> Video -> Casos de Uso -> Laboratorio Práctico -> Evaluación.
+
+4.3. Sistema de Progresión y "Trainee Graph"
+
+    Bloqueo de Módulos: No se puede acceder al módulo n+1 si no se ha validado el éxito en el módulo n.
+
+    Mapa de Nodos: Una visualización que muestre el camino del estudiante (nodos verdes para éxitos, rojos para errores recurrentes).
+
+5. Definición del Motor de IA (Instrucciones de Sistema)
+
+El desarrollador debe configurar la API de Gemini con las siguientes directrices (System Instructions):
+
+    Formato de salida: Únicamente JSON.
+
+    Personalidad: Senior Pentester, mentor socrático.
+
+    Evaluación: Debe analizar la eficiencia del comando, no solo si "funcionó".
+
+6. Flujo de Datos del Prototipo (Diagrama de Secuencia)
+7. Fases de Desarrollo (Roadmap)
+
+    Fase 1 (Infraestructura): Configuración de contenedores Docker y puente WebSockets para la terminal.
+
+    Fase 2 (Integración IA): Creación del servicio de evaluación de comandos usando Gemini API.
+
+    Fase 3 (Frontend): Desarrollo del Dashboard gamificado y el panel de lecciones.
+
+    Fase 4 (Contenido RAG): Implementación de la base de datos vectorial para lecciones actualizadas automáticamente.
+
+8. Seguridad y Ética
+
+    Módulo 0: Obligatorio. Contrato de ética y disclaimer legal.
+
+    Sanitización: El backend debe filtrar comandos "prohibidos" antes de enviarlos al contenedor.
+
+Nota para el desarrollador: Este proyecto busca la máxima fidelidad técnica. El objetivo es que el usuario sienta que está en una terminal real de Kali Linux, mientras la IA supervisa cada movimiento para guiarlo hacia la experticia.
