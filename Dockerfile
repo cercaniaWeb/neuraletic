@@ -4,7 +4,6 @@
 FROM node:18-bullseye
 
 # Set environment variables
-ENV NODE_ENV=production
 ENV PORT=3000
 
 # Install basic security tools and dependencies
@@ -40,6 +39,9 @@ COPY . .
 
 # Build the frontend (React)
 RUN npm run build
+
+# Set production environment for runtime
+ENV NODE_ENV=production
 
 # Expose the port
 EXPOSE 3000
