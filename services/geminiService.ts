@@ -35,7 +35,11 @@ export const sendToCyberPathEngine = async (payload: CyberPathRequest): Promise<
                 4. Si la acción es 'evaluate', simula la salida del comando como si fueras un sistema Linux real y analiza la eficacia.
                 5. Nunca reveles la flag final directamente.`;
 
-        const response = await fetch('http://localhost:3001/api/generate', {
+        // Use dynamic API URL: in production use same origin, in dev use localhost:3001
+        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const API_URL = isDev ? 'http://localhost:3001' : window.location.origin;
+
+        const response = await fetch(`${API_URL}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

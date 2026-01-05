@@ -9,7 +9,22 @@ import { CyberPathResponse, LessonState, CommandHistoryItem } from './types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
-const MODULE_PIPELINE = ['Fundamentos', 'SQL Injection', 'Web Exploitation', 'Network Scanning'];
+const MODULE_PIPELINE = [
+  'Fundamentos',
+  'SQL Injection',
+  'Web Exploitation',
+  'Network Scanning',
+  'Password Cracking',
+  'Privilege Escalation',
+  'Web Shells',
+  'Directory Traversal',
+  'File Upload Exploitation',
+  'Metasploit Basics',
+  'Wireless Hacking',
+  'Cryptography',
+  'OSINT',
+  'Command Injection'
+];
 
 import { ACADEMIC_CURRICULUM } from './data/curriculum';
 
@@ -42,6 +57,7 @@ const App: React.FC = () => {
   const [isLessonComplete, setIsLessonComplete] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showModuleSelector, setShowModuleSelector] = useState(false);
 
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const saved = localStorage.getItem('cyberpath_sound');
@@ -411,6 +427,13 @@ const App: React.FC = () => {
           <Settings className="h-4 w-4 text-slate-400 group-hover:text-cyan-400" />
         </button>
         <button
+          onClick={() => setShowModuleSelector(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-purple-500/20 border border-slate-700 hover:border-purple-500/50 rounded-lg transition-all group"
+        >
+          <Cpu className="w-4 h-4 text-purple-500 group-hover:text-purple-400" />
+          <span className="text-xs font-bold text-slate-300 group-hover:text-purple-100 uppercase tracking-wider">Modules</span>
+        </button>
+        <button
           onClick={() => setShowGraph(true)}
           className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 rounded-lg transition-all group"
         >
@@ -547,6 +570,107 @@ const App: React.FC = () => {
                   >
                     Factory Reset System
                   </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {showModuleSelector && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-4xl bg-[#0a0a0a] border border-purple-500/30 rounded-2xl shadow-[0_0_50px_rgba(168,85,247,0.1)] overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="p-6 border-b border-purple-500/20 bg-black/40 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white tracking-widest uppercase flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-purple-500" />
+                  Training Modules
+                </h2>
+                <button onClick={() => setShowModuleSelector(false)} className="text-slate-400 hover:text-white"><X /></button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {MODULE_PIPELINE.map((moduleName, index) => {
+                    const moduleData = ACADEMIC_CURRICULUM[moduleName];
+                    const isCurrent = index === currentModuleIndex;
+                    const isCompleted = index < currentModuleIndex;
+                    const isLocked = index > currentModuleIndex;
+
+                    const difficultyColors = {
+                      'Principiante': 'bg-green-500/20 text-green-400 border-green-500/30',
+                      'Intermedio': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+                      'Avanzado': 'bg-red-500/20 text-red-400 border-red-500/30'
+                    };
+
+                    return (
+                      <button
+                        key={moduleName}
+                        onClick={() => {
+                          if (!isLocked) {
+                            setCurrentModuleIndex(index);
+                            setShowModuleSelector(false);
+                            fetchInitialLesson();
+                          }
+                        }}
+                        disabled={isLocked}
+                        className={`
+                          p-4 rounded-xl border text-left transition-all group relative overflow-hidden
+                          ${isCurrent ? 'bg-purple-500/10 border-purple-500/50 ring-2 ring-purple-500/30' : ''}
+                          ${isCompleted ? 'bg-cyan-500/5 border-cyan-500/20 hover:border-cyan-500/40' : ''}
+                          ${isLocked ? 'bg-slate-800/20 border-slate-700/30 opacity-50 cursor-not-allowed' : 'hover:bg-white/5'}
+                          ${!isCurrent && !isCompleted && !isLocked ? 'border-slate-700 hover:border-purple-500/50' : ''}
+                        `}
+                      >
+                        {/* Status indicator */}
+                        <div className="absolute top-2 right-2">
+                          {isCompleted && <div className="w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>}
+                          {isCurrent && <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse">▶</div>}
+                          {isLocked && <div className="w-6 h-6 bg-slate-600 rounded-full flex items-center justify-center text-white text-xs">🔒</div>}
+                        </div>
+
+                        <div className="space-y-2 pr-8">
+                          <div className="flex items-start gap-2">
+                            <span className="text-slate-500 text-xs font-bold">MOD-{String(index + 1).padStart(3, '0')}</span>
+                          </div>
+                          <h3 className={`font-bold text-sm leading-tight ${isLocked ? 'text-slate-500' : 'text-white'}`}>
+                            {moduleData?.title || moduleName}
+                          </h3>
+                          <p className={`text-xs leading-relaxed ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
+                            {moduleData?.description}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded border ${difficultyColors[moduleData?.difficulty || 'Intermedio']}`}>
+                              {moduleData?.difficulty || 'Intermedio'}
+                            </span>
+                            {moduleData?.video_url && (
+                              <span className="text-[10px] font-bold px-2 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                                📹 Video
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                  <div className="text-purple-400 font-bold text-xs uppercase mb-2">Progress</div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-cyan-500 transition-all duration-500"
+                        style={{ width: `${(currentModuleIndex / MODULE_PIPELINE.length) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-white font-bold text-sm">{currentModuleIndex}/{MODULE_PIPELINE.length}</span>
+                  </div>
+                  <div className="text-slate-400 text-xs mt-2">
+                    {currentModuleIndex === MODULE_PIPELINE.length ? 'All modules completed! 🎉' : `${MODULE_PIPELINE.length - currentModuleIndex} modules remaining`}
+                  </div>
                 </div>
               </div>
             </motion.div>
