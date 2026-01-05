@@ -73,10 +73,19 @@ app.post('/api/terminal/exec', (req, res) => {
         return;
     }
 
-    console.log(`[RealTerminal] Executing: ${command}`);
+    let finalCommand = command;
+
+    // Cloud Environment Adaptor: Inject flags for non-root network access if needed
+    if (finalCommand.trim().startsWith('nmap')) {
+        if (!finalCommand.includes('--unprivileged') && !finalCommand.includes('-sT')) {
+            finalCommand += ' --unprivileged';
+        }
+    }
+
+    console.log(`[RealTerminal] Executing: ${finalCommand}`);
 
     // Execution with timeout and constrained buffer
-    exec(command, { timeout: 15000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+    exec(finalCommand, { timeout: 15000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
         let output = stdout;
         if (stderr) {
             output += `\n\x1b[33m[STDERR]\n${stderr}\x1b[0m`;
